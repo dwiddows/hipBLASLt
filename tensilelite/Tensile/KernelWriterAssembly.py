@@ -22,36 +22,61 @@
 #
 ################################################################################
 
+
 from rocisa import countInstruction, countGlobalRead, countSMemLoad
+from rocisa.asmpass import getActFuncModuleName, getActFuncBranchModuleName
 from rocisa.code import KernelBody, Label, Macro, Module, RegSet, SrdUpperValue, \
                         StructuredModule, TextBlock, ValueEndif, ValueIf, ValueSet, SignatureBase
 from rocisa.container import DSModifiers, SDWAModifiers, VOP3PModifiers, \
                       MUBUFModifiers, SMEMModifiers, EXEC, VCC, RegisterContainer, \
-                      DPPModifiers, Holder, vgpr, sgpr, accvgpr, mgpr, HWRegContainer, \
-                      ContinuousRegister
-from rocisa.instruction import SGetPositivePCOffset, SLongBranchPositive, SCLongBranchScc0, SCLongBranchScc1
+                      DPPModifiers, vgpr, sgpr, accvgpr, mgpr, ContinuousRegister
+from rocisa.instruction import SGetPositivePCOffset, SLongBranchPositive, SCLongBranchScc0, SCLongBranchScc1, \
+                        vectorStaticDivide, vectorStaticRemainder, vectorUInt32CeilDivideAndRemainder, \
+                        vectorStaticDivideAndRemainder
 from rocisa.enum import InstType
-from rocisa.label import LabelManager
 from rocisa.macro import MacroVMagicDiv, PseudoRandomGenerator
 from . import CUSTOM_KERNEL_PATH
 from .TensileInstructions import SelectBit, \
                           SBranchIfZero, SBranchIfNotZero, SMulInt64to32, DSInit, VCvtBF16toFP32, \
-                          ArgumentLoader, bomb, vectorStaticDivideAndRemainder, \
-                          vectorStaticDivide, vectorStaticRemainder, scalarStaticRemainder, \
-                          scalarUInt32RegDivide, scalarUInt32DivideAndRemainder, vectorUInt32CeilDivideAndRemainder, \
-                          scalarStaticDivideAndRemainder, scalarStaticCeilDivide, sMagicDiv, staticMultiply, staticMultiplyAdd, \
-                          scalarStaticMultiply, \
-                          RegisterPool, allocTmpGpr, allocTmpGprList, \
-                          log2, ceilDivide, DataType, \
-                          dataTypeToMfmaInstTypePair, dataTypeNameAbbrevToInstType, \
-                          Assert
-from .TensileInstructions.Instructions import *
-from .TensilePass import getActivationFunctionModuleName, getActivationBranchModuleName
+                          ArgumentLoader, bomb, scalarStaticRemainder, \
+                          scalarUInt32DivideAndRemainder, scalarStaticDivideAndRemainder, \
+                          scalarStaticCeilDivide, sMagicDiv, staticMultiply, staticMultiplyAdd, scalarStaticMultiply, \
+                          RegisterPool, \
+                          allocTmpGpr, allocTmpGprList, log2, \
+                          ceilDivide, DataType, dataTypeToMfmaInstTypePair, \
+                          dataTypeNameAbbrevToInstType
+from rocisa.instruction import BranchInstruction, BufferLoadB128, BufferLoadB32, \
+  BufferLoadB64, BufferLoadD16B16, BufferLoadD16HIB16, BufferLoadD16HIU8, \
+  BufferLoadD16U8, BufferStoreB128, BufferStoreB16, BufferStoreB32, BufferStoreB64, \
+  BufferStoreB8, BufferStoreD16HIB16, CommonInstruction, DSBPermuteB32, DSLoadB128, \
+  DSLoadB16, DSLoadB32, DSLoadB64, DSLoadU16, DSStoreB128, DSStoreB16, DSStoreB32, \
+  DSStoreB64, DSStoreB8, DSStoreInstruction, FlatLoadB128, FlatLoadB32, FlatLoadB64, \
+  FlatLoadD16B16, FlatLoadD16HIB16, FlatStoreB128, FlatStoreB32, FlatStoreB64, \
+  FlatStoreD16B16, FlatStoreD16HIB16, MFMAInstruction, MUBUFReadInstruction, \
+  MacroInstruction, SAShiftRightI32, SAbsI32, SAddCU32, SAddI32, SAddU32, SAndB32, \
+  SAndB64, SAndN2B32, SAtomicDec, SBarrier, SBfmB32, SBitcmp1B32, SBranch, SCBranchSCC0, \
+  SCBranchSCC1, SCBranchVCCNZ, SCBranchVCCZ, SCMovB32, SCSelectB32, SCmpEQI32, \
+  SCmpEQU32, SCmpEQU64, SCmpGeI32, SCmpGeU32, SCmpGtI32, SCmpGtU32, SCmpKEQU32, \
+  SCmpKGeU32, SCmpKGtU32, SCmpKLGU32, SCmpLeI32, SCmpLeU32, SCmpLgU32, SCmpLtU32, \
+  SEndpgm, SFf1B32, SLShiftLeft2AddU32, SLShiftLeftB32, SLShiftLeftB64, SLShiftRightB32, \
+  SLShiftRightB64, SLoadB32, SLoadB64, SMFMAInstruction, SMemLoadInstruction, SMinI32, \
+  SMinU32, SMovB32, SMovB64, SMulHIU32, SMulI32, SNop, SOrB32, SOrSaveExecB32, \
+  SOrSaveExecB64, SSExtI16toI32, SSetPCB64, SSetPrior, SSubBU32, SSubI32, SSubU32, \
+  SWaitCnt, SXorB32, VAShiftRightI32, VAccvgprReadB32, VAccvgprWrite, VAccvgprWriteB32, \
+  VAdd3U32, VAddCCOU32, VAddCOU32, VAddF32, VAddF64, VAddLShiftLeftU32, VAddU32, VAndB32, \
+  VBfeU32, VCmpEQI32, VCmpEQU32, VCmpGEI32, VCmpGEU32, VCmpGtU32, VCmpLeI32, VCmpLtI32, \
+  VCmpLtU32, VCmpUF32, VCmpXGeU32, VCmpXLtU32, VCmpXLtU64, VCndMaskB32, VCvtF16toF32, \
+  VCvtF32toF16, VCvtFP8toF32, VCvtInstruction, VCvtPkF32toBF16, VCvtPkF32toBF8, \
+  VCvtPkF32toFP8, VCvtPkFP8toF32, VCvtSRF32toBF8, VCvtSRF32toFP8, VCvtScaleFP8toF16, \
+  VCvtScalePkF16toBF8, VCvtScalePkF16toFP8, VCvtScalePkFP8toF16, VLShiftLeftB32, \
+  VLShiftLeftB64, VLShiftRightB32, VMadU32U24, VMaxF32, VMinI32, VMovB32, VMulF32, \
+  VMulHIU32, VMulLOU32, VMulPKF32S, VMulU32U24, VNotB32, VOrB32, VPackF16toB32, \
+  VPrngB32, VReadfirstlaneB32, VSubF32, VSubI32, VSubU32, VXorB32
+
 from .Component import Component
 from .KernelWriterModules import *
 from .SolutionStructs import isPackedIndex
 from .AsmStoreState import StoreState, VectorDataTypes
-from .AsmMemoryInstruction import MemoryInstruction
 from .Activation import ActivationType
 from .CustomKernels import isCustomKernelConfig
 from .Common import roundUp
@@ -60,14 +85,12 @@ from Tensile.KernelWriter import KernelWriter
 from Tensile.SolutionStructs.Naming import getKernelFileBase
 from Tensile.Toolchain.Component import Assembler
 
-from math import ceil, log, floor
+from math import ceil, log
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List, NamedTuple, Optional, Tuple, Union
 
 import os
-import subprocess
-
 @dataclass
 class TailOptParams:
   idx:                 int         = 0
@@ -93,16 +116,15 @@ class KernelWriterAssembly(KernelWriter):
   ##############################################################################
   def __init__(
       self,
-      kernelMinNaming,
       kernelSerialNaming,
       assembler: Assembler,
       debugConfig: DebugConfig,
     ):
-    super(KernelWriterAssembly, self).__init__(kernelMinNaming, kernelSerialNaming, assembler, debugConfig)
+    super(KernelWriterAssembly, self).__init__(kernelSerialNaming, assembler, debugConfig)
 
 
   def _getCustomKernelSource(self, useShortNames, kernel, CustomKernelDirectory):
-    kernelName = getKernelFileBase(useShortNames, self.debugConfig.splitGSU, self.kernelMinNaming, self.kernelSerialNaming, kernel)
+    kernelName = getKernelFileBase(useShortNames, self.debugConfig.splitGSU, self.kernelSerialNaming, kernel)
     with open(os.path.join(CustomKernelDirectory, (kernelName + ".s"))) as f:
       rocmVersion = self.assembler.rocm_version
       if not (rocmVersion.major >= 6 and rocmVersion.patch >= 32650):
@@ -826,6 +848,24 @@ class KernelWriterAssembly(KernelWriter):
     if self.states.m.numVgprLocalReadAddr > 0:
       module.add(RegSet("v", "vgprLocalReadAddrMetadata", \
           self.states.m.startVgprLocalReadAddr))
+    if self.states.a.numVgprLocalReadSwapAddr > 0:
+      module.add(RegSet("v", "vgprLocalReadSwapAddrA", \
+          self.states.a.startVgprLocalReadSwapAddr))
+    if self.states.b.numVgprLocalReadSwapAddr > 0:
+      module.add(RegSet("v", "vgprLocalReadSwapAddrB", \
+          self.states.b.startVgprLocalReadSwapAddr))
+    if self.states.m.numVgprLocalReadSwapAddr > 0:
+      module.add(RegSet("v", "vgprLocalReadSwapAddrMetadata", \
+          self.states.m.startVgprLocalReadSwapAddr))
+    if self.states.a.numVgprLocalWriteSwapAddr > 0:
+      module.add(RegSet("v", "vgprLocalWriteSwapAddrA", \
+          self.states.a.startVgprLocalWriteSwapAddr))
+    if self.states.b.numVgprLocalWriteSwapAddr > 0:
+      module.add(RegSet("v", "vgprLocalWriteSwapAddrB", \
+          self.states.b.startVgprLocalWriteSwapAddr))
+    if self.states.m.numVgprLocalWriteSwapAddr > 0:
+      module.add(RegSet("v", "vgprLocalWriteSwapAddrMetadata", \
+          self.states.m.startVgprLocalWriteSwapAddr))
 
     if kernel["ProblemType"]["OutputAmaxD"]:
       module.add(RegSet("v", "vgprAmaxOut", self.startVgprAmaxOut))
@@ -1389,6 +1429,13 @@ class KernelWriterAssembly(KernelWriter):
       module.add(self.lraDeclareAddresses(kernel, tPM))
     module.addComment1("local read addresses: declare addresses b")
     module.add(self.lraDeclareAddresses(kernel, tPB))
+
+    if self.states.a.numVgprLocalReadAddr > 0:
+      module.add(self.lraSwapAddressesForDTLPad(kernel, tPA))
+    if self.states.b.numVgprLocalReadAddr > 0:
+      module.add(self.lraSwapAddressesForDTLPad(kernel, tPB))
+    if self.states.m.numVgprLocalReadAddr > 0:
+      module.add(self.lraSwapAddressesForDTLPad(kernel, tPM))
 
     return module
 
@@ -3814,24 +3861,22 @@ class KernelWriterAssembly(KernelWriter):
             comment="lwFOB = lwB%s + lwB%s*MT%s + LDS_OFFSET_METADATA=%u" % (tP["tileChar"], \
             self.states.unrollChar, tP["tileChar"], kernel["LdsOffsetMetadata"])))
 
+    numLwa = 0
     if tP["isA"]:
-      if self.states.a.numVgprLocalReadAddr > 1:
-        finalVgpr64K = vgpr("LocalWriteAddr%s+1"%tc)
-        module.add(VAddU32(dst=finalVgpr64K, src0=0x10000, src1= vgpr(destVgpr), \
-            comment="Final Offset Plus 64K" ))
-      if self.states.a.numVgprLocalReadAddr > 2:
-        finalVgpr128K = vgpr("LocalWriteAddr%s+2"%tc)
-        module.add(VAddU32(dst=finalVgpr128K, src0= 0x20000, src1= vgpr(destVgpr), \
-            comment="Final Offset Plus 128K" ))
-    else:
-      if self.states.b.numVgprLocalReadAddr > 1:
-        finalVgpr64K = vgpr("LocalWriteAddr%s+1"%tc)
-        module.add(VAddU32(dst=finalVgpr64K, src0=0x10000, src1= vgpr(destVgpr), \
-            comment="Final Offset Plus 64K" ))
-      if self.states.b.numVgprLocalReadAddr > 2:
-        finalVgpr128K = vgpr("LocalWriteAddr%s+2"%tc)
-        module.add(VAddU32(dst=finalVgpr128K, src0= 0x20000, src1= vgpr(destVgpr), \
-            comment="Final Offset Plus 128K" ))
+      numLwa = self.states.a.numVgprLocalWriteAddr
+    elif tP["isB"]:
+      numLwa = self.states.b.numVgprLocalWriteAddr
+    elif tP["isM"]:
+      numLwa = self.states.m.numVgprLocalWriteAddr
+
+    if numLwa > 1:
+      finalVgpr64K = vgpr("LocalWriteAddr%s+1"%tc)
+      module.add(VAddU32(dst=finalVgpr64K, src0=0x10000, src1= vgpr(destVgpr), \
+          comment="Final Offset Plus 64K" ))
+    if numLwa > 2:
+      finalVgpr128K = vgpr("LocalWriteAddr%s+2"%tc)
+      module.add(VAddU32(dst=finalVgpr128K, src0= 0x20000, src1= vgpr(destVgpr), \
+          comment="Final Offset Plus 128K" ))
 
     #LSC_ * LSP_
     numBytesPerElement = kernel["ProblemType"]["DataType"].numBytes()
@@ -3878,6 +3923,21 @@ class KernelWriterAssembly(KernelWriter):
           src=vgpr(destVgpr), \
           comment="Copy lds write address VGPR to SGPR"))
       self.vgprPool.checkIn(destVgpr)
+
+    if kernel["StoreSwapAddr"]:
+      if kernel["LocalWriteUseSgpr%s"%tc]:
+        # needed for the VReadfirstlaneB32 in the prior code block
+        if self.states.archCaps["CrosslaneWait"]:
+          module.add(SNop(waitState=0, comment="1 wait states"))
+        module.add(SAddU32(dst=sgpr("Swap%s"%tc), src0=sgpr("LocalWriteAddr%s"%tc), src1=kernel["LdsOffsetA_Blk"], comment="Calculate starting lds addr of second buffer"))
+        module.add(SXorB32(dst=sgpr("Swap%s"%tc), src0=sgpr("Swap%s"%tc), src1=sgpr("LocalWriteAddr%s"%tc), comment="xor both lds buffer offsets to enable swapping"))
+      else:
+        module.add(VAddU32(dst=vgpr("LocalWriteSwapAddr%s"%tc), src0=kernel["LdsOffsetA_Blk"], src1=vgpr("LocalWriteAddr%s"%tc), \
+                           comment="starting lds addr of second buffer" ))
+        module.add(VXorB32(dst=vgpr("LocalWriteSwapAddr%s"%tc), \
+                          src0=vgpr("LocalWriteSwapAddr%s"%tc), \
+                          src1=vgpr("LocalWriteAddr%s"%tc), \
+                          comment="xor both lds offsets to enable swapping"))
 
     # dump lds write offsets
     #if tP["isA"]:
@@ -4004,7 +4064,9 @@ class KernelWriterAssembly(KernelWriter):
           self.vgprPool.checkIn(kidx)
         else:
           sgid = self.vgprPool.checkOut(1) # quotient
-          module.add(vectorStaticDivide(sgid, "Serial", divisor, tmpSgpr, \
+          vtmp = self.vgprPool.checkOut(1) # tmp
+          vCont = ContinuousRegister(vtmp, 1)
+          module.add(vectorStaticDivide(sgid, "Serial", divisor, vCont, \
             "LSU offset: sgid = Serial / subGroup(%u)" % divisor))
           module.add(staticMultiply(vgpr(sgid), vgpr(sgid), mtAddPad, tmpSgprInfo, \
             "LSU offset: lsuoffset = sgid*(MT%u+PAD)"%tile01))
@@ -4015,6 +4077,7 @@ class KernelWriterAssembly(KernelWriter):
           module.add(VAddLShiftLeftU32(dst=finalVgpr, shiftHex=hex(log2(tP["bpe"])), src0=vgpr(sgid), src1=vgpr(tP["gpr"]["lro"]), \
             comment="Final Offset: add padding %u per block %u" % (kernel["LdsPad%s"%tc] * tP["bpeDS"], kernel["LdsBlockSizePerPad%s"%tc])))
           self.vgprPool.checkIn(sgid)
+          self.vgprPool.checkIn(vtmp)
 
       # release resources
       self.vgprPool.checkIn(tP["gpr"]["lro"])
@@ -4029,6 +4092,7 @@ class KernelWriterAssembly(KernelWriter):
           module.add(staticMultiplyAdd(vgpr("LocalReadAddr%s"%tc), vgpr(rReg), kernel["LdsPad%s"%tc] * tP["bpe"], vgpr("LocalReadAddr%s"%tc), tmpSgprInfo, \
             "Final Offset: padding %u per block %u" % (kernel["LdsPad%s"%tc] * tP["bpeDS"], kernel["LdsBlockSizePerPad%s"%tc])))
           self.vgprPool.checkIn(rReg)
+
     return module
 
   ##############################################################################
@@ -4089,14 +4153,6 @@ class KernelWriterAssembly(KernelWriter):
     if tP["isA"]:
       module.addComment0("N/A")
 
-      if self.states.a.numVgprLocalReadAddr > 1:
-        finalVgpr64K = vgpr("LocalReadAddr%s+1"%tP["tensorChar"])
-        module.add(VAddU32(dst=finalVgpr64K, src0=0x10000, src1= vgpr("LocalReadAddr%s+0"%tP["tensorChar"]), \
-          comment="Final vgprLocalReadAddr%s+1 Offset Plus 64K"%tP["tensorChar"] ))
-      if self.states.a.numVgprLocalReadAddr > 2:
-        finalVgpr128K = vgpr("LocalReadAddr%s+2"%tP["tensorChar"])
-        module.add(VAddU32(dst=finalVgpr128K, src0=0x20000, src1= vgpr("LocalReadAddr%s+0"%tP["tensorChar"]), \
-          comment="Final vgprLocalReadAddr%s+2 Offset Plus 128K"%tP["tensorChar"] ))
     else:
       # no need to generate add code if LdsOffset is 0 or DirectToVgprB
       if kernel["LdsOffset%s"%tP["tensorChar"]] == 0 or tP["isB"] and kernel["DirectToVgprB"]:
@@ -4108,14 +4164,35 @@ class KernelWriterAssembly(KernelWriter):
             src0=hex(kernel["LdsOffset%s"%tP["tensorChar"]]), \
             src1=vgpr("LocalReadAddr%s+0"%tP["tensorChar"]), \
             comment=" += LdsOffset%s (lower)"%tP["tensorChar"]))
-      if self.states.b.numVgprLocalReadAddr > 1:
-        finalVgpr64K = vgpr("LocalReadAddr%s+1"%tP["tensorChar"])
-        module.add(VAddU32(dst=finalVgpr64K, src0=0x10000, src1= vgpr("LocalReadAddr%s+0"%tP["tensorChar"]), \
+    numLra = 0
+    if tP["isA"]:
+      numLra = self.states.a.numVgprLocalReadAddr
+    elif tP["isB"]:
+      numLra = self.states.b.numVgprLocalReadAddr
+    elif tP["isM"]:
+      numLra = self.states.m.numVgprLocalReadAddr
+
+    if numLra > 1:
+      finalVgpr64K = vgpr("LocalReadAddr%s+1"%tP["tensorChar"])
+      module.add(VAddU32(dst=finalVgpr64K, src0=0x10000, src1= vgpr("LocalReadAddr%s+0"%tP["tensorChar"]), \
           comment="Final vgprLocalReadAddr%s+1 Offset Plus 64K"%tP["tensorChar"] ))
-      if self.states.b.numVgprLocalReadAddr > 2:
-        finalVgpr128K = vgpr("LocalReadAddr%s+2"%tP["tensorChar"])
-        module.add(VAddU32(dst=finalVgpr128K, src0=0x20000, src1= vgpr("LocalReadAddr%s+0"%tP["tensorChar"]), \
+    if numLra > 2:
+      finalVgpr128K = vgpr("LocalReadAddr%s+2"%tP["tensorChar"])
+      module.add(VAddU32(dst=finalVgpr128K, src0=0x20000, src1= vgpr("LocalReadAddr%s+0"%tP["tensorChar"]), \
           comment="Final vgprLocalReadAddr%s+2 Offset Plus 128K"%tP["tensorChar"] ))
+    return module
+
+  def lraSwapAddressesForDTLPad(self, kernel, tP):
+    module = Module("lraSwapAddressesForDTLPad")
+
+    tc = tP["tensorChar"]
+    if kernel["StoreSwapAddr"]:
+      module.add(VAddU32(dst=vgpr("LocalReadSwapAddr%s"%tc), src0=kernel["LdsOffsetA_Blk"], src1=vgpr("LocalReadAddr%s"%tc), \
+                         comment="Calculate starting lds addr of second buffer" ))
+      module.add(VXorB32(dst=vgpr("LocalReadSwapAddr%s"%tc), \
+                         src0=vgpr("LocalReadSwapAddr%s"%tc), \
+                         src1=vgpr("LocalReadAddr%s"%tc), \
+                         comment="xor both lds buffer offsets to enable swapping"))
     return module
 
   ##############################################################################
@@ -5565,10 +5642,10 @@ class KernelWriterAssembly(KernelWriter):
           # so the ds_reads read from the 'high' buffer of LDS
           oddIterPreCode.addComment1("Select high bank of LDS")
           # Generate local read address code only if DirectToVgpr is not enabled
-          if not kernel["DirectToVgprA"]:
+          if not kernel["DirectToVgprA"] and not kernel["StoreSwapAddr"]:
             oddIterCode.add(self.localReadSwapOffsets(kernel, False, tPA))
           # Generate local read address code only if DirectToVgpr is not enabled
-          if not kernel["DirectToVgprB"]:
+          if not kernel["DirectToVgprB"] and not kernel["StoreSwapAddr"]:
             oddIterCode.add(self.localReadSwapOffsets(kernel, False, tPB))
 
           if kernel["ProblemType"]["Sparse"]:
@@ -6069,15 +6146,14 @@ class KernelWriterAssembly(KernelWriter):
     # alloc vgpr
     kReg    = None
     abReg   = None
-    tmpVgpr = None
-    dummy   = None
+    dummy   = -1
 
     if isTail and (kernel["AssertSummationElementMultiple"] % kPerIter != 0):
       kReg    = self.vgprPool.checkOut(1,"kReg") # remainder
       loopCntSgpr = loopCounterName
 
       with self.allocTmpSgpr(1) as tmpSgprInfo:
-        shiftK.add(vectorStaticRemainder(dummy, kReg, "Serial", kernel["NumWaveSplitK"], tmpVgpr, tmpSgprInfo))
+        shiftK.add(vectorStaticRemainder(dummy, kReg, "Serial", kernel["NumWaveSplitK"], None, tmpSgprInfo))
 
       numTmpSgpr = 4 if (vgprPerInput > 2) else 3
 
@@ -6149,8 +6225,6 @@ class KernelWriterAssembly(KernelWriter):
     # release register
     if kReg is not None: self.vgprPool.checkIn(kReg)
     if abReg is not None: self.vgprPool.checkIn(abReg)
-    if tmpVgpr is not None: self.vgprPool.checkIn(tmpVgpr)
-    if dummy is not None: self.vgprPool.checkIn(dummy)
 
     if self.do["MAC"]:
       imod.add(shiftK)
@@ -6221,7 +6295,7 @@ class KernelWriterAssembly(KernelWriter):
     kReg    = None
     abReg   = None
     tmpVgpr = None
-    dummy   = None
+    dummy   = -1
 
     if (numRegistersIn < 1) and ((kernel["UnrollMajorLDSA"] == False) or (kernel["UnrollMajorLDSB"] == False)):
       s_nop = 2
@@ -6797,7 +6871,6 @@ class KernelWriterAssembly(KernelWriter):
     if kReg is not None: self.vgprPool.checkIn(kReg)
     if abReg is not None: self.vgprPool.checkIn(abReg)
     if tmpVgpr is not None: self.vgprPool.checkIn(tmpVgpr)
-    if dummy is not None: self.vgprPool.checkIn(dummy)
 
     mfmaMod = Module("mfmaCode")
     if self.do["MAC"]:
@@ -8060,7 +8133,7 @@ class KernelWriterAssembly(KernelWriter):
   ##############################################################################
   # DirectToLds M0 update: Do It A/B
   ##############################################################################
-  def directToLdsM0Update(self, kernel, mode, tP, usePlaceHolder=False):
+  def directToLdsM0Update(self, kernel, mode, tP, skipWait = False):
     tc = tP["tensorChar"]
     imod = Module("directToLdsM0Update%s_%u"%(tc,mode))
     DtldsModule = imod.add(Module("dtls_offset%s"%tP["tensorChar"]))
@@ -8077,15 +8150,12 @@ class KernelWriterAssembly(KernelWriter):
         DtldsModule.add(SMovB32(dst=mgpr(0), src=sgpr("LocalWriteAddr%s"%tc), comment="m0 <- LDS write address"))
 
       # PrefetchGlobalRead=2 case, generate local read wait for DirectToLds
-      if kernel["PrefetchGlobalRead"]==2:
+      if kernel["PrefetchGlobalRead"]==2 and not skipWait:
         # do not generate local read wait for PGR=2
         DtldsModule.addComment0("before DirectToLds load, ensure prior ds_reads have finished")
         DtldsModule.add(SWaitCnt(lgkmcnt=0, comment=""))
         if not kernel["NoLdsWriteCode"]:
-          if usePlaceHolder:
-            waitStr = Holder(idx=0)
-          else:
-            waitStr = 0
+          waitStr = 0
           DtldsModule.add(SWaitCnt(vmcnt=waitStr, comment=""))
         DtldsModule.add(SBarrier())
 
@@ -8366,26 +8436,41 @@ class KernelWriterAssembly(KernelWriter):
 
     if not (needSwap or needMetaSwap): return Module("localWriteSwapOffsets (Empty)")
     module = Module("localWriteSwapOffsets")
+
+    def localWriteSwapXOR(tc, src0Val, numLwa):
+      if kernel["LocalWriteUseSgpr%s"%tc]:
+        module.add(SXorB32(
+          dst=sgpr("LocalWriteAddr%s"%tc), \
+          src0=src0Val, \
+          src1=sgpr("LocalWriteAddr%s"%tc), \
+          comment="swap Red Blk SGPR"))
+      else:
+        for i in range(0,numLwa):
+          module.add(VXorB32(
+            dst=vgpr("LocalWriteAddr%s+%u"%(tc,i)), \
+            src0=src0Val, \
+            src1=vgpr("LocalWriteAddr%s+%u"%(tc,i)), \
+            comment="swap Red Blk"))
+
     if needSwap:
       #fixme-iui  need to use wrapping increment for double or triple buffering:
-      if internalPointerSwap:
+
+      if internalPointerSwap and not kernel["StoreSwapAddr"]:
         tP["localWriteSwapByteOffset"] = 0 if tP["localWriteSwapByteOffset"] else kernel["LdsOffsetA_Blk"]
         module.addComment1("(EPS=1) local write swap internal offset -> %u" % tP["localWriteSwapByteOffset"])
       else:
-        if kernel["LocalWriteUseSgpr%s"%tc]:
-          module.add(SXorB32(
-              dst=sgpr("LocalWriteAddr%s"%tP["tensorChar"]), \
-              src0=hex(kernel["LdsOffsetA_Blk"]), \
-              src1=sgpr("LocalWriteAddr%s"%tP["tensorChar"]), \
-              comment="swap Red Blk SGPR"))
+        src0Val = None
+        if kernel["StoreSwapAddr"]:
+          if kernel["LocalWriteUseSgpr%s"%tc]:
+            src0Val = sgpr("Swap%s"%tc)
+          else:
+            src0Val = vgpr("LocalWriteSwapAddr%s"%tc)
         else:
-          numLwa = self.states.a.numVgprLocalWriteAddr if tP["isA"] else self.states.b.numVgprLocalWriteAddr
-          for i in range(0,numLwa):
-            module.add(VXorB32(
-                dst=vgpr("LocalWriteAddr%s+%u"%(tc,i)), \
-                src0=hex(kernel["LdsOffsetA_Blk"]), \
-                src1=vgpr("LocalWriteAddr%s+%u"%(tc,i)), \
-                comment="swap Red Blk"))
+          # Using inlined constants
+          src0Val = hex(kernel["LdsOffsetA_Blk"])
+        numLwa = self.states.a.numVgprLocalWriteAddr if tP["isA"] else self.states.b.numVgprLocalWriteAddr
+        localWriteSwapXOR(tc, src0Val, numLwa)
+
     # This used to control where to store the metadata
     if needMetaSwap:
       if kernel["DirectToVgprSparseMetadata"]:
@@ -8394,24 +8479,20 @@ class KernelWriterAssembly(KernelWriter):
       else:
         tc = "Metadata"
         tPM = tP["tpsMetadata"]
-        if internalPointerSwap:
+        if internalPointerSwap and not kernel["StoreSwapAddr"]:
           tPM["localWriteSwapByteOffset"] = 0 if tPM["localWriteSwapByteOffset"] else kernel["LdsOffsetA_Blk"]
           module.addComment1("(EPS=1) local write swap internal offset -> %u" % tPM["localWriteSwapByteOffset"])
         else:
-          if kernel["LocalWriteUseSgpr%s"%tc]:
-            module.add(SXorB32(
-                dst=sgpr("LocalWriteAddr%s"%tPM["tensorChar"]), \
-                src0=hex(kernel["LdsOffsetA_Blk"]), \
-                src1=sgpr("LocalWriteAddr%s"%tPM["tensorChar"]), \
-                comment="swap Red Blk SGPR"))
+          if kernel["StoreSwapAddr"]:
+            if kernel["LocalWriteUseSgpr%s"%tc]:
+              src0Val = sgpr("Swap%s"%tc)
+            else:
+              src0Val = vgpr("LocalWriteSwapAddr%s"%tc)
           else:
-            numLwa = self.states.m.numVgprLocalWriteAddr
-            for i in range(0,numLwa):
-              module.add(VXorB32(
-                  dst=vgpr("LocalWriteAddr%s+%u"%(tc,i)), \
-                  src0=hex(kernel["LdsOffsetA_Blk"]), \
-                  src1=vgpr("LocalWriteAddr%s+%u"%(tc,i)), \
-                  comment="swap Red Blk"))
+            # Using inlined constants
+            src0Val = hex(kernel["LdsOffsetA_Blk"])
+          numLwa = self.states.m.numVgprLocalWriteAddr
+          localWriteSwapXOR(tc, src0Val, numLwa)
     return module
 
   ##############################################################################
@@ -8436,8 +8517,34 @@ class KernelWriterAssembly(KernelWriter):
     module = Module("localWriteResetOffsets")
     if needReset:
       resetMask = hex(kernel["LdsOffsetA_Blk"]-1 | self.consts.ldsOOB)
-      if internalPointerSwap:
-        tP["localWriteSwapByteOffset"] = 0
+      if internalPointerSwap or kernel["StoreSwapAddr"]:
+        if internalPointerSwap:
+          tP["localWriteSwapByteOffset"] = 0
+        else:
+          if kernel["LocalWriteUseSgpr%s"%tc]:
+            tmpsgpr = self.sgprPool.checkOut(1)
+            module.add(SXorB32(
+              dst=sgpr(tmpsgpr), \
+              src0=sgpr("Swap%s"%tc), \
+              src1=sgpr("LocalWriteAddr%s"%tP["tensorChar"]), \
+              comment="Get other lds buffer offset value"))
+            module.add(SMinU32(dst=sgpr("LocalWriteAddr%s"%tP["tensorChar"]), \
+                               src0=sgpr("LocalWriteAddr%s"%tP["tensorChar"]), \
+                               src1=sgpr(tmpsgpr), comment="Set LWA to first buffer offset" ))
+            self.sgprPool.checkIn(tmpsgpr)
+          else:
+            print('tc write', tc)
+            tmpvgpr = self.vgprPool.checkOut(1)
+            module.add(VXorB32(
+              dst=vgpr(tmpvgpr), \
+              src0=vgpr("LocalWriteSwapAddr%s"%tc), \
+              src1=vgpr("LocalWriteAddr%s"%tc), \
+              comment="Get other lds buffer offset"))
+            module.add(VMinI32(dst=vgpr("LocalWriteAddr%s"%tc), \
+                               src0=vgpr("LocalWriteAddr%s"%tc), \
+                               src1=vgpr(tmpvgpr),
+                               comment="Set LWA to first buffer offset"))
+            self.vgprPool.checkIn(tmpvgpr)
       else:
         if kernel["LocalWriteUseSgpr%s"%tc]:
           module.add(SAndB32(
@@ -8446,11 +8553,17 @@ class KernelWriterAssembly(KernelWriter):
               src1=sgpr("LocalWriteAddr%s"%tP["tensorChar"]), \
               comment="reset to Red"))
         else:
-          module.add(VAndB32(
-              dst=vgpr("LocalWriteAddr%s"%tP["tensorChar"]), \
-              src0=resetMask, \
-              src1=vgpr("LocalWriteAddr%s"%tP["tensorChar"]), \
-              comment="reset to Red"))
+          numLwa = 0
+          if tP["isA"]:
+            numLwa = self.states.a.numVgprLocalWriteAddr
+          elif tP["isB"]:
+            numLwa = self.states.b.numVgprLocalWriteAddr
+          for i in range(numLwa):
+            module.add(VAndB32(
+                dst=vgpr("LocalWriteAddr%s+%u"%(tP["tensorChar"], i)), \
+                src0=resetMask, \
+                src1=vgpr("LocalWriteAddr%s+%u"%(tP["tensorChar"], i)), \
+                comment="reset to Red"))
     if needMetaReset:
       if kernel["DirectToVgprSparseMetadata"]:
         tP["metadataWriteSwapByteOffset"] = 0
@@ -8460,30 +8573,38 @@ class KernelWriterAssembly(KernelWriter):
         resetMask = hex(kernel["LdsOffsetA_Blk"]-1 | self.consts.ldsOOB)
         if internalPointerSwap:
           tPM["localWriteSwapByteOffset"] = 0
-        else:
-          module.add(VAndB32(
-              dst=vgpr("LocalWriteAddr%s"%tPM["tensorChar"]), \
-              src0=resetMask, \
-              src1=vgpr("LocalWriteAddr%s"%tPM["tensorChar"]), \
-              comment="reset to Red"))
-          if tP["isA"]:
-            if self.states.a.numVgprLocalWriteAddr > 1:
-              finalVgpr64K = vgpr("LocalWriteAddr%s+1"%tc)
-              module.add(VAddU32(dst=finalVgpr64K, src0=0x10000, src1= vgpr("LocalWriteAddr%s"%tP["tensorChar"]), \
-                comment="Final Offset Plus 64K" ))
-            if self.states.a.numVgprLocalWriteAddr > 2:
-              finalVgpr128K = vgpr("LocalWriteAddr%s+2"%tc)
-              module.add(VAddU32(dst=finalVgpr128K, src0=0x20000, src1= vgpr("LocalWriteAddr%s"%tP["tensorChar"]), \
-                comment="Final Offset Plus 128K" ))
+        elif kernel["StoreSwapAddr"]:
+          if kernel["LocalWriteUseSgpr%s"%tPM["tensorChar"]]:
+            tmpsgpr = self.sgprPool.checkOut(1)
+            module.add(SXorB32(
+              dst=sgpr(tmpsgpr), \
+              src0=sgpr("Swap%s"%tPM["tensorChar"]), \
+              src1=sgpr("LocalWriteAddr%s"%tPM["tensorChar"]), \
+              comment="Get other lds buffer offset value"))
+            module.add(SMinU32(dst=sgpr("LocalWriteAddr%s"%tPM["tensorChar"]), \
+                               src0=sgpr("LocalWriteAddr%s"%tPM["tensorChar"]), \
+                               src1=sgpr(tmpsgpr), comment="Set LWA to first buffer offset" ))
+            self.sgprPool.checkIn(tmpsgpr)
           else:
-            if self.states.b.numVgprLocalWriteAddr > 1:
-              finalVgpr64K = vgpr("LocalWriteAddr%s+1"%tc)
-              module.add(VAddU32(dst=finalVgpr64K, src0=0x10000, src1= vgpr("LocalWriteAddr%s"%tP["tensorChar"]), \
-                comment="Final Offset Plus 64K" ))
-            if self.states.b.numVgprLocalWriteAddr > 2:
-              finalVgpr128K = vgpr("LocalWriteAddr%s+2"%tc)
-              module.add(VAddU32(dst=finalVgpr128K, src0=0x20000, src1= vgpr("LocalWriteAddr%s"%tP["tensorChar"]), \
-                comment="Final Offset Plus 128K" ))
+            tmpvgpr = self.vgprPool.checkOut(1)
+            module.add(VXorB32(
+              dst=vgpr(tmpvgpr), \
+              src0=vgpr("LocalWriteSwapAddr%s"%tPM["tensorChar"]), \
+              src1=vgpr("LocalWriteAddr%s"%tPM["tensorChar"]), \
+              comment="Get other lds buffer offset"))
+            module.add(VMinI32(dst=vgpr("LocalWriteAddr%s"%tPM["tensorChar"]), \
+                               src0=vgpr("LocalWriteAddr%s"%tPM["tensorChar"]), \
+                               src1=vgpr(tmpvgpr),
+                               comment="Set LWA to first buffer offset"))
+            self.vgprPool.checkIn(tmpvgpr)
+        else:
+          numLwa = self.states.m.numVgprLocalWriteAddr
+          for i in range(numLwa):
+            module.add(VAndB32(
+                dst=vgpr("LocalWriteAddr%s+%u"%(tPM["tensorChar"], i)), \
+                src0=resetMask, \
+                src1=vgpr("LocalWriteAddr%s+%u"%(tPM["tensorChar"], i)), \
+                comment="reset to Red"))
     return module
 
   ##############################################################################
@@ -9020,10 +9141,10 @@ class KernelWriterAssembly(KernelWriter):
                     sel = 1 if vi %2 == 1 else 0
                     if self.states.asmCaps["Hascvtfp8_f16"] and not kernel["ProblemType"]["StochasticRounding"] and not kernel["ProblemType"]["UseScaleAB"] == "Scalar":
                       if (toF8):
-                        localWriteCVTCode.add(VCvtPkF16toFP8(dst=vgpr(destVgprPrefix + "+%u+%u"%(g2lIdx, vi//2)), src=[vgpr(destVgprPrefix + "+%u+%u"%(g2lIdx, vi)), 0x3f800000],\
+                        localWriteCVTCode.add(VCvtScalePkF16toFP8(dst=vgpr(destVgprPrefix + "+%u+%u"%(g2lIdx, vi//2)), src=vgpr(destVgprPrefix + "+%u+%u"%(g2lIdx, vi)), scale=0x3f800000,\
                                                               vop3=VOP3PModifiers(op_sel=[0,0,sel]), comment="convert F16 to F8"))
                       else:
-                        localWriteCVTCode.add(VCvtPkF16toBF8(dst=vgpr(destVgprPrefix + "+%u+%u"%(g2lIdx, vi//2)), src=[vgpr(destVgprPrefix + "+%u+%u"%(g2lIdx, vi)), 0x3f800000],\
+                        localWriteCVTCode.add(VCvtScalePkF16toBF8(dst=vgpr(destVgprPrefix + "+%u+%u"%(g2lIdx, vi//2)), src=vgpr(destVgprPrefix + "+%u+%u"%(g2lIdx, vi)), scale=0x3f800000,\
                                                               vop3=VOP3PModifiers(op_sel=[0,0,sel]), comment="convert F16 to BF8"))
                     else:
                       localWriteCVTCode.add(VCvtF16toF32(dst=vgpr(vgprTmp), src=vgpr(destVgprPrefix + "+%u+%u"%(g2lIdx, vi)), sdwa=SDWAModifiers(src0_sel=SelectBit.WORD_0), comment="convert to F32"))
@@ -9076,7 +9197,7 @@ class KernelWriterAssembly(KernelWriter):
                     dst_sel = SelectBit.WORD_1 if isHigh16Bits else SelectBit.WORD_0
                     if self.states.asmCaps["Hascvtf16_fp8"]:
                       sel = [0,1,1,0] if isHigh16Bits else [0,0,0,0]
-                      localWriteCVTCode.add(VCvtFP8toF16(dst=paramList[0], src=[new_src, 0x3f800000], vop3=VOP3PModifiers(op_sel=sel), comment="A convert fp8 to f16"))
+                      localWriteCVTCode.add(VCvtScaleFP8toF16(dst=paramList[0], src=new_src, scale=0x3f800000, vop3=VOP3PModifiers(op_sel=sel), comment="A convert fp8 to f16"))
                     else:
                       localWriteCVTCode.add(VCvtFP8toF32(dst=vgpr(vgprTmp), src=new_src , sdwa=SDWAModifiers(src0_sel=src_sel), comment="convert C to fp32"))
                       localWriteCVTCode.add(VCvtF32toF16(dst=paramList[0], src=vgpr(vgprTmp), sdwa=SDWAModifiers(dst_sel=dst_sel), comment="convert C to fp16"))
@@ -9107,7 +9228,7 @@ class KernelWriterAssembly(KernelWriter):
 
                     if new_src == paramList[0]:
                       if self.states.asmCaps["Hascvtf16_fp8"]:
-                        localWriteCVTCode.add(VCvtFP8toF16(dst=paramList[0], src=[new_src , 0x3f800000], vop3=VOP3PModifiers(op_sel=sel), comment="B convert fp8 to f16"))
+                        localWriteCVTCode.add(VCvtScaleFP8toF16(dst=paramList[0], src=new_src , scale=0x3f800000, vop3=VOP3PModifiers(op_sel=sel), comment="B convert fp8 to f16"))
                       else:
                         if src_sel == SelectBit.BYTE_0 or src_sel == SelectBit.BYTE_2:
                           if regTmpVgprBlock == None:
@@ -9120,7 +9241,7 @@ class KernelWriterAssembly(KernelWriter):
                     else:
                       vgprTmp = self.vgprPool.checkOut(1)
                       if self.states.asmCaps["Hascvtf16_fp8"]:
-                        localWriteCVTCode.add(VCvtFP8toF16(dst=paramList[0], src=[new_src, 0x3f800000], vop3=VOP3PModifiers(op_sel=sel), comment="C convert fp8 to f16"))
+                        localWriteCVTCode.add(VCvtScaleFP8toF16(dst=paramList[0], src=new_src, scale=0x3f800000, vop3=VOP3PModifiers(op_sel=sel), comment="C convert fp8 to f16"))
                       else:
                         localWriteCVTCode.add(VCvtFP8toF32(dst=vgpr(vgprTmp), src=new_src , sdwa=SDWAModifiers(src0_sel=src_sel), comment="convert C to fp32"))
                         localWriteCVTCode.add(VCvtF32toF16(dst=paramList[0], src=vgpr(vgprTmp), sdwa=SDWAModifiers(dst_sel=dst_sel), comment="convert C to fp16"))
@@ -9131,7 +9252,7 @@ class KernelWriterAssembly(KernelWriter):
                   modNum = max(1, int(newBlockWidth / blockWidth))
                   if self.states.asmCaps["Hascvtf16_fp8"]:
                     sel  = [1,0,0,0] if isCvtHighBits else [0,0,0,0]
-                    localWriteCVTCode.add(VCvtPkFP8toF16(dst=vgpr(destVgprPrefix + "+%u"%(g2lIdx)), src=[vgpr(destVgprPrefix + "+%u"%(g2lIdx)), 0x3f800000],\
+                    localWriteCVTCode.add(VCvtScalePkFP8toF16(dst=vgpr(destVgprPrefix + "+%u"%(g2lIdx)), src=vgpr(destVgprPrefix + "+%u"%(g2lIdx)), scale=0x3f800000,\
                                                           vop3=VOP3PModifiers(op_sel=sel), comment="D convert fp8 to f16"))
                   else:
                     if (not isHigh16Bits) and (g2lIdx % modNum == 0):
@@ -9148,13 +9269,13 @@ class KernelWriterAssembly(KernelWriter):
                   if (not isHigh16Bits) and (newBlockWidth <= blockWidth):
                     for vi in range(0, int(newBlockWidth)):
                       if self.states.asmCaps["Hascvtf16_fp8"]:
-                        localWriteCVTCode.add(VCvtFP8toF16(dst=vgpr(destVgprPrefix + "+%u+%u"%(g2lIdx, vi * 2)),     src=[vgpr(destVgprPrefix + "+%u+%u"%(g2lIdx+tP["shiftGR"], vi)), 0x3f800000],\
+                        localWriteCVTCode.add(VCvtScaleFP8toF16(dst=vgpr(destVgprPrefix + "+%u+%u"%(g2lIdx, vi * 2)),     src=vgpr(destVgprPrefix + "+%u+%u"%(g2lIdx+tP["shiftGR"], vi)), scale=0x3f800000,\
                                                             vop3=VOP3PModifiers(op_sel=[0,0,0,0]), comment="E convert fp8 to f16"))
-                        localWriteCVTCode.add(VCvtFP8toF16(dst=vgpr(destVgprPrefix + "+%u+%u"%(g2lIdx, vi * 2)),     src=[vgpr(destVgprPrefix + "+%u+%u"%(g2lIdx+tP["shiftGR"], vi)), 0x3f800000],\
+                        localWriteCVTCode.add(VCvtScaleFP8toF16(dst=vgpr(destVgprPrefix + "+%u+%u"%(g2lIdx, vi * 2)),     src=vgpr(destVgprPrefix + "+%u+%u"%(g2lIdx+tP["shiftGR"], vi)), scale=0x3f800000,\
                                                             vop3=VOP3PModifiers(op_sel=[1,0,1,0]), comment="E convert fp8 to f16"))
-                        localWriteCVTCode.add(VCvtFP8toF16(dst=vgpr(destVgprPrefix + "+%u+%u"%(g2lIdx, vi * 2 + 1)), src=[vgpr(destVgprPrefix + "+%u+%u"%(g2lIdx+tP["shiftGR"], vi)), 0x3f800000],\
+                        localWriteCVTCode.add(VCvtScaleFP8toF16(dst=vgpr(destVgprPrefix + "+%u+%u"%(g2lIdx, vi * 2 + 1)), src=vgpr(destVgprPrefix + "+%u+%u"%(g2lIdx+tP["shiftGR"], vi)), scale=0x3f800000,\
                                                             vop3=VOP3PModifiers(op_sel=[0,1,0,0]), comment="E convert fp8 to f16"))
-                        localWriteCVTCode.add(VCvtFP8toF16(dst=vgpr(destVgprPrefix + "+%u+%u"%(g2lIdx, vi * 2 + 1)), src=[vgpr(destVgprPrefix + "+%u+%u"%(g2lIdx+tP["shiftGR"], vi)), 0x3f800000],\
+                        localWriteCVTCode.add(VCvtScaleFP8toF16(dst=vgpr(destVgprPrefix + "+%u+%u"%(g2lIdx, vi * 2 + 1)), src=vgpr(destVgprPrefix + "+%u+%u"%(g2lIdx+tP["shiftGR"], vi)), scale=0x3f800000,\
                                                             vop3=VOP3PModifiers(op_sel=[1,1,1,0]), comment="E convert fp8 to f16"))
                       else:
                         localWriteCVTCode.add(VCvtPkFP8toF32(dst=vgpr(vgprTmp, 2), src=vgpr(destVgprPrefix + "+%u+%u"%(g2lIdx+tP["shiftGR"], vi)), sdwa=SDWAModifiers(src0_sel=SelectBit.WORD_0), comment="convert to F32"))
@@ -9172,8 +9293,8 @@ class KernelWriterAssembly(KernelWriter):
                       interOffset = 0 if idxMod % 2 == 0 else 1
                       if self.states.asmCaps["Hascvtf16_fp8"]:
                         sel = 1 if idxMod % 2 == 0 else 1
-                        localWriteCVTCode.add(VCvtPkFP8toF16(dst=vgpr(destVgprPrefix + "+%u+%u"%(g2lIdxTmp, vi * 2 + interOffset)),\
-                                                              src=[vgpr(destVgprPrefix + "+%u+%u"%(g2lIdxTmp+tP["shiftGR"], vi)), 0x3f800000],\
+                        localWriteCVTCode.add(VCvtScalePkFP8toF16(dst=vgpr(destVgprPrefix + "+%u+%u"%(g2lIdxTmp, vi * 2 + interOffset)),\
+                                                              src=vgpr(destVgprPrefix + "+%u+%u"%(g2lIdxTmp+tP["shiftGR"], vi)), scale=0x3f800000,\
                                                               vop3=VOP3PModifiers(op_sel=[0,0,0,sel]), comment="F convert fp8 to f16"))
                       else:
                         localWriteCVTCode.add(VCvtPkFP8toF32(dst=vgpr(vgprTmp, 2), src=vgpr(destVgprPrefix + "+%u+%u"%(g2lIdxTmp+tP["shiftGR"], vi)), sdwa=SDWAModifiers(src0_sel=selectBit), comment="convert to F32"))
@@ -9281,15 +9402,30 @@ class KernelWriterAssembly(KernelWriter):
     if kernel["1LDSBuffer"] or ((tP["isA"] or tP["isB"]) and kernel["DirectToVgpr%s"%tc]): # no local read code if DirectToVgpr is enabled
       return Module("localReadSwapOffsets (Empty)")
     module = Module("localReadSwapOffsets")
-    if internalPointerSwap:
-      tP["localReadSwapByteOffset"] = 0 if tP["localReadSwapByteOffset"] else kernel["LdsOffsetA_Blk"]
-      module.addComment1("local read swap internal offset -> %u" % tP["localReadSwapByteOffset"])
-    else:
-      module.add(VXorB32(
-          dst=vgpr("LocalReadAddr%s"%tP["tensorChar"]), \
-          src0=hex(kernel["LdsOffsetA_Blk"]), \
-          src1=vgpr("LocalReadAddr%s"%tP["tensorChar"]), \
+    if internalPointerSwap or kernel["StoreSwapAddr"]:
+      if not kernel["StoreSwapAddr"]:
+        tP["localReadSwapByteOffset"] = 0 if tP["localReadSwapByteOffset"] else kernel["LdsOffsetA_Blk"]
+        module.addComment1("local read swap internal offset -> %u" % tP["localReadSwapByteOffset"])
+      else:
+        module.add(VXorB32(
+          dst=vgpr("LocalReadAddr%s"%tc), \
+          src0=vgpr("LocalReadSwapAddr%s"%tc), \
+          src1=vgpr("LocalReadAddr%s"%tc), \
           comment="swap Red Blk"))
+    else:
+      numLra = 0
+      if tP["isA"]:
+        numLra = self.states.a.numVgprLocalReadAddr
+      elif tP["isB"]:
+        numLra = self.states.b.numVgprLocalReadAddr
+      elif tP["isM"]:
+        numLra = self.states.m.numVgprLocalReadAddr
+      for i in range(numLra):
+        module.add(VXorB32(
+            dst=vgpr("LocalReadAddr%s+%u"%(tP["tensorChar"], i)), \
+            src0=hex(kernel["LdsOffsetA_Blk"]), \
+            src1=vgpr("LocalReadAddr%s+%u"%(tP["tensorChar"], i)), \
+            comment="swap Red Blk"))
     return module
 
   ##############################################################################
@@ -9309,11 +9445,32 @@ class KernelWriterAssembly(KernelWriter):
       module.addComment1("localReadResetOffsets")
       tP["localReadOffset"] = 0
       module.addComment0("handled internally")
-    module.add(VAndB32(
-        dst=vgpr("LocalReadAddr%s"%tP["tensorChar"]), \
-        src0=hex(kernel["LdsOffsetA_Blk"]-1), \
-        src1=vgpr("LocalReadAddr%s"%tP["tensorChar"]), \
-        comment="reset Red,Blk -> Red"))
+
+    if kernel["StoreSwapAddr"]:
+      # Reset offset, by picking smaller of the two
+      tmpvgpr = self.vgprPool.checkOut(1) # contains other offsets
+      module.add(VXorB32(
+        dst=vgpr(tmpvgpr), \
+        src0=vgpr("LocalReadSwapAddr%s"%tc), \
+        src1=vgpr("LocalReadAddr%s"%tc), \
+        comment="Get other lds buffer offset value"))
+      module.add(VMinI32(dst=vgpr("LocalReadAddr%s"%tc), src0=vgpr("LocalReadAddr%s"%tc), src1=vgpr(tmpvgpr),
+                      comment="Set LRA to first buffer offset"))
+      self.vgprPool.checkIn(tmpvgpr)
+    else:
+      numLra = 0
+      if tP["isA"]:
+        numLra = self.states.a.numVgprLocalReadAddr
+      elif tP["isB"]:
+        numLra = self.states.b.numVgprLocalReadAddr
+      elif tP["isM"]:
+        numLra = self.states.m.numVgprLocalReadAddr
+      for i in range(numLra):
+        module.add(VAndB32(
+            dst=vgpr("LocalReadAddr%s+%u"%(tP["tensorChar"], i)), \
+            src0=hex(kernel["LdsOffsetA_Blk"]-1), \
+            src1=vgpr("LocalReadAddr%s+%u"%(tP["tensorChar"], i)), \
+            comment="reset Red,Blk -> Red"))
     return module
 
   ##############################################################################
@@ -9328,11 +9485,19 @@ class KernelWriterAssembly(KernelWriter):
       module.addComment1("localReadInitPointers")
       tP["localReadOffset"] = 0
     else:
-      module.add(VAndB32(
-          dst=vgpr("LocalReadAddr%s"%tP["tensorChar"]), \
-          src0=hex(kernel["LdsOffset%s_Blk"%tP["tensorChar"]]-1), \
-          src1=vgpr("LocalReadAddr%s"%tP["tensorChar"]), \
-          comment="init Red,Blk -> Red"))
+      numLra = 0
+      if tP["isA"]:
+        numLra = self.states.a.numVgprLocalReadAddr
+      elif tP["isB"]:
+        numLra = self.states.b.numVgprLocalReadAddr
+      elif tP["isM"]:
+        numLra = self.states.m.numVgprLocalReadAddr
+      for i in range(numLra):
+        module.add(VAndB32(
+            dst=vgpr("LocalReadAddr%s+%u"%(tP["tensorChar"], i)), \
+            src0=hex(kernel["LdsOffset%s_Blk"%tP["tensorChar"]]-1), \
+            src1=vgpr("LocalReadAddr%s+%u"%(tP["tensorChar"], i)), \
+            comment="init Red,Blk -> Red"))
     return module
 
   ##############################################################################
@@ -9374,12 +9539,20 @@ class KernelWriterAssembly(KernelWriter):
       with self.allocTmpSgpr(1) as tmpSgprInfo:
         tmpSgpr = tmpSgprInfo.idx
         module.add(SMovB32(dst=sgpr(tmpSgpr), src=hex(inc), comment="inc"))
-        module.add(VAddCOU32(
-            dst=vgpr("LocalReadAddr%s"%tP["tensorChar"]), \
-            dst1=VCC(), \
-            src0=sgpr(tmpSgpr), \
-            src1=vgpr("LocalReadAddr%s"%tP["tensorChar"]), \
-            comment="lr%s += %u%s"%(tP["tensorChar"], inc, comment) ))
+        numLra = 0
+        if tP["isA"]:
+          numLra = self.states.a.numVgprLocalReadAddr
+        elif tP["isB"]:
+          numLra = self.states.b.numVgprLocalReadAddr
+        elif tP["isM"]:
+          numLra = self.states.m.numVgprLocalReadAddr
+        for i in range(numLra):
+          module.add(VAddCOU32(
+              dst=vgpr("LocalReadAddr%s+%u"%(tP["tensorChar"], i)), \
+              dst1=VCC(), \
+              src0=sgpr(tmpSgpr), \
+              src1=vgpr("LocalReadAddr%s+%u"%(tP["tensorChar"], i)), \
+              comment="lr%s += %u%s"%(tP["tensorChar"], inc, comment) ))
     else:
       if tP["localReadInstruction"].numOffsets == 1:
         if kernel["EnableMatrixInstruction"]:
@@ -9453,12 +9626,20 @@ class KernelWriterAssembly(KernelWriter):
           module.addComment0("self.localReadDoCntA %d self.localReadDoCntB %d" % (self.states.localReadDoCntA,self.states.localReadDoCntB))
       else:
         inc = (kernel["MacroTile%s" % tP["tensorChar"]] + LdsPad)
-        module.add(VAddCOU32(
-            dst=vgpr("LocalReadAddr%s"%tP["tensorChar"]), \
-            dst1=VCC(), \
-            src0=hex(inc), \
-            src1=vgpr("LocalReadAddr%s"%tP["tensorChar"]), \
-            comment="lr%s += %u ((MT+Pad)*bpe"%(tP["tensorChar"], inc) ))
+        numLra = 0
+        if tP["isA"]:
+          numLra = self.states.a.numVgprLocalReadAddr
+        elif tP["isB"]:
+          numLra = self.states.b.numVgprLocalReadAddr
+        elif tP["isM"]:
+          numLra = self.states.m.numVgprLocalReadAddr
+        for i in range(numLra):
+          module.add(VAddCOU32(
+              dst=vgpr("LocalReadAddr%s+%u"%(tP["tensorChar"], i)), \
+              dst1=VCC(), \
+              src0=hex(inc), \
+              src1=vgpr("LocalReadAddr%s+%u"%(tP["tensorChar"], i)), \
+              comment="lr%s += %u ((MT+Pad)*bpe)"%(tP["tensorChar"], inc) ))
 
     return module
 
@@ -11294,7 +11475,7 @@ class KernelWriterAssembly(KernelWriter):
         assert activationEnumStrList and activationSetPCStruct
         for key, activationLabelModules in activationLabelList.items():
           gwvw = key
-          actModules = Module(getActivationFunctionModuleName(gwvw, \
+          actModules = Module(getActFuncModuleName(gwvw, \
             activationSetPCStruct.vgprActCopy, tmpVgpr.idx, actTempSgpr))
           for index, activationLabelModule in enumerate(activationLabelModules):
             actModule = Module(activationLabelModule.getLabelName())
@@ -11724,7 +11905,7 @@ class KernelWriterAssembly(KernelWriter):
           dst = vgpr(destVgpr, rpv//4)
           rv.add(BufferLoadB128(dst=dst, vaddr=addr0, saddr=addr1, \
                                 soffset=soffset, mubuf=mubuf, comment=comment))
-          
+
           mubuf2 = MUBUFModifiers(offen=True, offset12=int(offset + bpl/4), glc=glc, slc=slc, nt=nt, lds=lds)
           dst2 = destVgpr + "+" + str(int(rpv//4)) if isinstance(destVgpr, str) else int(destVgpr + int(rpv//4))
 
@@ -11734,14 +11915,14 @@ class KernelWriterAssembly(KernelWriter):
           #+0.5
           mubuf3 = MUBUFModifiers(offen=True, offset12=int(offset + bpl/2), glc=glc, slc=slc, nt=nt, lds=lds)
           dst3 = destVgpr + "+" + str(int(rpv//2)) if isinstance(destVgpr, str) else int(destVgpr + int(rpv//2))
-          
+
           dst = vgpr(dst3, rpv//4)
           rv.add(BufferLoadB128(dst=dst, vaddr=addr0, saddr=addr1, \
                                 soffset=soffset, mubuf=mubuf3, comment=comment))
           #+0.75
           mubuf4 = MUBUFModifiers(offen=True, offset12= int(offset + 3*bpl/4), glc=glc, slc=slc, nt=nt, lds=lds)
           dst4 = destVgpr + "+" + str(3*int(rpv//4)) if isinstance(destVgpr, str) else int(destVgpr + 3*int(rpv//4))
-          
+
           dst = vgpr(dst4, rpv//4)
           rv.add(BufferLoadB128(dst=dst, vaddr=addr0, saddr=addr1, \
                                 soffset=soffset, mubuf=mubuf4, comment=comment))
@@ -13028,7 +13209,7 @@ class KernelWriterAssembly(KernelWriter):
     mod.addSpaceLine()
 
     # TODO- F16?
-    mod.add(VMaxF32(vgpr("AmaxOut"), vgpr("AmaxOut"), SrcAbs(vgpr("Value"))))
+    mod.add(VMaxF32(vgpr("AmaxOut"), vgpr("AmaxOut"), vgpr("Value", isAbs=True)))
     mod.addSpaceLine()
 
     mod.add(SMovB32(sgpr("Tmp"), wave_size * amaxInType.numBytes()))
@@ -13119,7 +13300,7 @@ class KernelWriterAssembly(KernelWriter):
     toActModuleList, activationEnumStrList, activationLabelList, \
     betaIdx = -1, edgeIdx = -1):
     activationLabelModules = activationLabelList[gwvw]
-    module = Module(getActivationBranchModuleName())
+    module = Module(getActFuncBranchModuleName())
     setAddrEndLabel = Label(self.labels.getNameInc("ActivationSetPCAddrEnd"), "")
     toActModules = deepcopy(toActModuleList[gwvw])
     for index, toActModule in enumerate(toActModules):
