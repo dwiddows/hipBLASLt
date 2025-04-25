@@ -110,6 +110,10 @@ class MatchingLibrary:
                     entry = {"key": key, "index": value, "speed": row[1][1]}
 
                 table.append(entry)
+            # A bit more info on lines that cause errors here. TODO: Decide whether to keep this.
+            except IndexError:
+                raise ValueError(
+                    f"Could not index this data index: {index}\n value={value}\nkeyOrder{keyOrder}\nrow: {row}")
             except KeyError:
                 pass
 
